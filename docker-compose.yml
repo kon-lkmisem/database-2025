@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  web:
+    build: .  # image 대신 build로 변경
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}  # 외부 DB 호스트 (env 파일에서 가져옴)
+      - DB_PORT=${DB_PORT}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+    env_file:
+      - .env.prod

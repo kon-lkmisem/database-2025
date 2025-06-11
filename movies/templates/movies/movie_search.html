@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>영화 검색</title>
+    <style>
+    body { font-family: 'Noto Sans KR', sans-serif; margin: 20px; }
+    .search-form { 
+        /* background: #f5f5f5; */ /* 배경색 제거 */
+        padding: 20px; 
+        border-top: 1px solid #afafaf;    /* 상단 구분선 진하게 */
+        border-bottom: 1px solid #afafaf; /* 하단 구분선 진하게 */
+        margin-bottom: 20px; 
+    }
+    .form-grid { 
+        display: grid; 
+        grid-template-columns: auto 2fr 1fr auto 2fr auto 1fr auto 1fr auto; 
+        grid-template-rows: repeat(5, auto);
+        gap: 10px 20px; 
+        align-items: center; 
+    }
+    .form-label { font-weight: bold; white-space: nowrap; font-family: 'Noto Sans KR', sans-serif; }
+    .form-input input, .form-input select, .form-input div { 
+        width: 100%; 
+        font-family: 'Noto Sans KR', sans-serif; 
+    }
+    .form-input input[type="text"], .form-input select{
+        border: 1px solid #d7d7d7; 
+        padding: 5px;
+    }
+    .date-input-group {position: relative; display: flex; align-items: center; gap: 2px; flex: 1; }
+    /* .date-input-group input[type="text"] { 
+        flex: 1; 
+        padding: 5px; 
+        border: 1px solid #ddd; 
+        font-family: 'Noto Sans KR', sans-serif; 
+    } */
+    .hidden-date-input { 
+        position: absolute;
+        width: 1%;
+        opacity: 0;
+        z-index: -1;
+    }
+    .calendar-btn { 
+        width: 30px; 
+        height: 30px; 
+        border: 1px solid #ddd; 
+        cursor: pointer;
+        background: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-family: 'Noto Sans KR', sans-serif;
+    }
+    .calendar-btn:hover {
+        background: #e0e0e0;
+    }
+    .date-range { display: flex; align-items: center; gap: 5px; }
+    .date-range span { flex-shrink: 0; font-family: 'Noto Sans KR', sans-serif; }
+    .year-range { display: flex; align-items: center; gap: 5px; }
+    .button-group { 
+        display: flex; 
+        gap: 5px; 
+        grid-row: 1 / 3; 
+        grid-column: 10; 
+        align-self: center;
+    }
+    .separator { grid-column: 1 / -1; border-top: 1px dotted #999; margin: 10px 0; }
+    .index-section { grid-column: 1 / -1; display: flex; align-items: flex-start; margin-top: 10px; }
+    .index-section label { 
+        width: 120px; 
+        flex-shrink: 0; 
+        font-family: 'Noto Sans KR', sans-serif; 
+    }
+    .index-links { display: flex; flex-wrap: wrap; margin-left: 10px; gap: 2px; width: 100%;}
+    .index-links a { 
+        text-decoration: none; 
+        padding: 4px 8px; 
+        font-size: 14px; 
+        flex-shrink: 0; 
+        font-family: 'Noto Sans KR', sans-serif; 
+        border: 1px solid transparent;
+        border-radius: 3px;
+        text-decoration: none; 
+        color: inherit;
+    }
+    .index-links a:hover { 
+        background: #e0e0e0; 
+    }
+    .index-links a.active {
+        background: #5076db;
+        color: white;
+        border: 1px solid #5076db;
+        font-weight: bold;
+        border-radius: 50%; /* 원형으로 변경 */
+    }
+    .results-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 20px; 
+        border-left: none;  /* 좌측 테두리 제거 */
+        border-right: none; /* 우측 테두리 제거 */
+        font-family: 'Noto Sans KR', sans-serif;
+        border-bottom: 2px solid #666; /* 하단 테두리 회색으로 추가 */
+    }
+    .results-table th, .results-table td { 
+        border-top: 1px solid #ddd; 
+        border-bottom: 1px solid #ddd; 
+        border-left: none;  /* 좌측 테두리 제거 */
+        border-right: none; /* 우측 테두리 제거 */
+        padding: 8px; 
+        text-align: left; 
+        font-family: 'Noto Sans KR', sans-serif;
+        font-size: 12px;
+    }
+    /* 셀 간 구분선만 유지 */
+    .results-table th:not(:last-child), 
+    .results-table td:not(:last-child) { 
+        border-right: 1px solid #ddd; 
+    }
+    .results-table th { 
+        background: #f0f0f0; font-family: 
+        'Noto Sans KR', sans-serif; 
+        border-top: 2px solid #5076db; /* 상단 테두리 파란색으로 추가 */ 
+        border-bottom: 2px solid #666; /* 하단 테두리 회색으로 추가 */ 
+        text-align: center;
+    }
+    /* 격줄 배경색 추가 */
+    .results-table tr:nth-child(even) { background-color: #f9f9f9; }
+    .results-table tr:nth-child(odd) { background-color: white; }
+    .results-table tr:hover { background-color: #e8f4fd; } /* 마우스 오버 효과 */
+    .pagination { 
+        text-align: center; 
+        margin-top: 20px; 
+        font-family: 'Noto Sans KR', sans-serif; 
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 2px;
+    }
+    .pagination a, .pagination span { 
+        display: inline-block;
+        padding: 8px 12px;
+        margin: 0;
+        text-decoration: none; 
+        font-family: 'Noto Sans KR', sans-serif;
+        color: #333;
+        background: white;
+        min-width: 20px;
+        text-align: center;
+        font-size: 14px;
+    }
+    .pagination .nav-btn {
+        border: 1px solid #ddd; 
+    }
+    .pagination a:hover {
+        background: #f5f5f5;
+    }
+    .pagination .current {
+        background: white;
+        color: #333;
+        border-color: #ddd;
+        font-weight: bold;
+        text-decoration: underline;
+    }
+    .pagination .nav-btn {
+        padding: 8px 8px;
+        font-size: 12px;
+        color: #666;
+    }
+    .pagination .nav-btn:hover {
+        background: #f5f5f5;
+    }
+    .pagination .nav-btn.disabled {
+        color: #ccc;
+        cursor: not-allowed;
+        background: #f9f9f9;
+    }
+    .pagination .dots {
+        border: none;
+        background: none;
+        padding: 8px 4px;
+    }
+
+    #query-button {
+        background: #5076db;
+        color: white;
+        border: none;
+        width: 70px;
+        height: 48px;
+        font-size: 14px;
+        font-family: 'Noto Sans KR', sans-serif;
+    }
+    #query-button:hover {
+        cursor: pointer;
+    }
+
+    #reset-button {
+        background: #626262; 
+        color: white; 
+        border: none; 
+        width: 70px; 
+        height: 48px; 
+        font-size: 14px; 
+        font-family: 'Noto Sans KR', sans-serif;
+        
+    }
+    #reset-button:hover {
+        cursor: pointer;
+    }
+    /* 조회 시간 표시 스타일 */
+    .query-time { 
+        position: fixed; 
+        bottom: 20px; 
+        right: 20px; 
+        background: #f0f0f0; 
+        padding: 10px; 
+        border: 1px solid #ddd; 
+        border-radius: 5px; 
+        font-size: 12px; 
+        color: #666; 
+        font-family: 'Noto Sans KR', sans-serif; 
+    }
+    
+    /* 팝업 스타일 */
+    .popup-overlay { 
+        display: none; 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: rgba(0,0,0,0.5); 
+        z-index: 1000; 
+    }
+    .popup-content { 
+        position: absolute; 
+        background: white; 
+        width: 520px; 
+        max-height: 400px; 
+        border-radius: 4px; 
+        font-family: 'Noto Sans KR', sans-serif;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        border: 1px solid #ddd;
+        padding: 20px;
+    }
+    .popup-header { 
+        padding-bottom: 20px;
+        border-bottom: 1px solid #dee2e6; 
+        font-family: 'Noto Sans KR', sans-serif; 
+        font-size: 16px;
+        font-weight: 500;
+        color: #5076db;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .popup-body { 
+        max-height: 280px; 
+        overflow-y: auto; 
+        font-family: 'Noto Sans KR', sans-serif; 
+    }
+    .checkbox-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        padding: 10px 0;
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 15px;
+        background: #f8f9fa;
+        font-weight: 500;
+        color: #495057;
+        text-align: center;
+    }
+    .checkbox-header div {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 10px;
+        align-items: center;
+        padding: 0 10px;
+    }
+    .popup-close { 
+        cursor: pointer; 
+        font-size: 24px; 
+        font-family: 'Noto Sans KR', sans-serif; 
+        color: #6c757d;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 2px;
+    }
+    .popup-close:hover {
+        background: #e9ecef;
+        color: #495057;
+    }
+    .checkbox-grid { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 8px 20px; 
+        margin-top: 15px;
+        border: 1px solid #dee2e6;
+    }
+    .checkbox-item { 
+        display: flex; 
+        align-items: center; 
+        padding: 8px 0;
+        font-family: 'Noto Sans KR', sans-serif; 
+        border-bottom: 1px solid #f1f3f4;
+    }
+    .checkbox-item:last-child {
+        border-bottom: none;
+    }
+    .checkbox-item input { 
+        margin-right: 10px; 
+        width: 16px;
+        height: 16px;
+        accent-color: #6c5ce7;
+    }
+    .checkbox-item label { 
+        font-family: 'Noto Sans KR', sans-serif; 
+        font-size: 14px;
+        color: #333;
+        cursor: pointer;
+        flex: 1;
+    }
+    .select-all-section {
+        padding: 12px 0;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .select-all-section .left-side {
+        display: flex;
+        align-items: center;
+    }
+    .select-all-section input {
+        margin-right: 10px;
+        width: 16px;
+        height: 16px;
+        accent-color: #6c5ce7;
+    }
+    .select-all-section label {
+        font-weight: 500;
+        color: #495057;
+        cursor: pointer;
+    }
+    .confirm-btn {
+        background: #5076db;
+        color: white;
+        border: none;
+        padding: 6px 16px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: 'Noto Sans KR', sans-serif;
+        transition: background 0.2s ease;
+    }
+    /* 팝업 테이블 스타일 */
+    .popup-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        border: 1px solid #dee2e6;
+    }
+    .popup-table th {
+        background: #f8f9fa;
+        padding: 10px;
+        border: none;
+        border-top: 1px solid #000; /* 상단 테두리 파란색으로 추가 */
+        font-weight: 500;
+        color: #495057;
+        text-align: center;
+        font-size: 14px;
+    }
+    .popup-table td {
+        padding: 8px 10px;
+        border: 1px solid #dee2e6;
+        font-size: 14px;
+    }
+    .popup-table tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    .popup-table tr:hover {
+        background-color: #e8f4fd;
+    }
+    .popup-table input[type="checkbox"] {
+        margin: 0;
+        width: 16px;
+        height: 16px;
+        accent-color: #6c5ce7;
+    }
+    .popup-table label {
+        font-family: 'Noto Sans KR', sans-serif;
+        font-size: 14px;
+        color: #333;
+        cursor: pointer;
+        margin: 0;
+    }
+    </style>
+</head>
+<body>
+    <h1>영화정보</h1>
+    
+    <form method="get" class="search-form">
+        <div class="form-grid">
+            <!-- Row 1 -->
+            <label class="form-label">• 영화명</label>
+            <div class="form-input">
+                <input type="text" name="q" value="{{ query }}" placeholder="영화명">
+            </div>
+            
+            <div></div> <!-- 간격 -->
+            
+            <label class="form-label">• 감독명</label>
+            <div class="form-input">
+                <input type="text" name="director" value="{{ director }}" placeholder="감독명">
+            </div>
+            
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            
+            <!-- 버튼 그룹 (1-2행 중간에 위치) -->
+            <div class="button-group">
+                <button type="submit" id="query-button">조회</button>
+                <a href="{% url 'movie_search' %}">
+                    <button type="button" id="reset-button">초기화</button>
+                </a>
+            </div>
+            
+            <!-- Row 2 -->
+            <label class="form-label">• 제작연도</label>
+            <div class="form-input">
+                <div class="year-range">
+                    <select name="year_start">
+                        <option value="">--전체--</option>
+                        {% for y in year_range %}
+                            <option value="{{ y }}" {% if year_start == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                    <span>~</span>
+                    <select name="year_end">
+                        <option value="">--전체--</option>
+                        {% for y in year_range %}
+                            <option value="{{ y }}" {% if year_end == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div></div> <!-- 간격 -->
+            
+            <!-- <label class="form-label">• 제작일자</label>
+            <div class="form-input">
+                <div class="date-range">
+                    <div class="date-input-group">
+                        <input type="date" id="start_date_picker" class="hidden-date-input" 
+                               onchange="document.getElementById('start_date_text').value = this.value">
+                        <input type="text" name="production_date_start" value="{{ production_date_start }}" 
+                               placeholder="YYYY-MM-DD" id="start_date_text" onclick="openCalendar('start')">
+                        <button type="button" class="calendar-btn" onclick="openCalendar('start')">📅</button>
+                    </div>
+                    <span>~</span>
+                    <div class="date-input-group">
+                        <input type="date" id="end_date_picker" class="hidden-date-input" 
+                               onchange="document.getElementById('end_date_text').value = this.value">
+                        <input type="text" name="production_date_end" value="{{ production_date_end }}" 
+                               placeholder="YYYY-MM-DD" id="end_date_text" onclick="openCalendar('end')">
+                        <button type="button" class="calendar-btn" onclick="openCalendar('end')">📅</button>
+                    </div>
+                </div>
+            </div> -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            
+            <!-- 구분선 -->
+            <div class="separator"></div>
+            
+            <!-- Row 3 -->
+            <label class="form-label">• 제작상태</label>
+            <div class="form-input">
+                <input type="text" name="movie_state" id="movie_state_input" value="{{ movie_state }}" placeholder="제작상태" onclick="openStatePopup()" style="background: white;">
+            </div>
+            
+            <div></div> <!-- 간격 -->
+            
+            <label class="form-label">• 유형</label>
+            <div class="form-input">
+                <input type="text" name="movie_type" id="movie_type_input" value="{{ movie_type }}" placeholder="유형" onclick="openTypePopup()" style="background: white;">
+            </div>
+            
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            
+            <!-- Row 4 -->
+            <label class="form-label">• 장르별</label>
+            <div class="form-input">
+                <input type="text" name="genre" id="genre_input" value="{{ genre }}" placeholder="장르" onclick="openGenrePopup()" style="background: white;">
+            </div>
+            
+            <div></div> <!-- 간격 -->
+            
+            <label class="form-label">• 국적별</label>
+            <div class="form-input">
+                <input type="text" name="nation" id="nation_input" value="{{ nation }}" placeholder="제작국가" onclick="openNationPopup()" style="background: white;">
+            </div>
+            
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            <div></div> <!-- 빈 공간 -->
+            
+            <!-- Row 5 - 인덱싱 -->
+            <div class="index-section">
+                <label class="form-label">• 영화명 인덱싱</label>
+                <div class="index-links">
+                    {% for ch in "ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎABCDEFGHIJKLMNOPQRSTUVWXYZ" %}
+                        <a href="?q={{ query }}&director={{ director }}&genre={{ genre }}&year_start={{ year_start }}&year_end={{ year_end }}&movie_state={{ movie_state }}&movie_type={{ movie_type }}&nation={{ nation }}&index={{ ch }}" 
+                           {% if index == ch %}class="active"{% endif %}>{{ ch }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div style="margin: 20px 0;">
+        <span>총 <em class="fwb" style="font-weight: bold; font-style: normal;">{{ page_obj.paginator.count }}</em>건</span>
+    </div>
+
+    <table class="results-table">
+        <thead>
+            <tr>
+                <th>영화명</th>
+                <th>영화명(영문)</th>
+                <th>영화코드</th>
+                <th>제작연도</th>
+                <th>제작국가</th>
+                <th>유형</th>
+                <th>장르</th>
+                <th>제작상태</th>
+                <th>감독</th>
+                <th>제작사</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for movie in results %}
+            <tr>
+                <td>{{ movie.movie_name|default:""|safe  }}</td>
+                <td>{{ movie.movie_engname|default:""|safe  }}</td>
+                <td>{{ movie.mid|default:""|safe  }}</td>
+                <td>{{ movie.create_year|default:""|safe  }}</td>
+                <td>
+                    {% for nation in movie.nations.all %}
+                        {{ nation.nation|default:""|safe  }}{% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                        -
+                    {% endfor %}
+                </td>
+                <td>{{ movie.movie_type }}</td>
+                <td>
+                    {% for genre in movie.genres.all %}{{ genre.genre|default:""|safe  }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                </td>
+                <td>{{ movie.movie_state|default:""|safe }}</td>
+                <td>
+                    {% for casting in movie.castings.all %}
+                        {{ casting.director.dname|default:""|safe  }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                <td>
+                    {% for company in movie.companies.all %}
+                        {{ company.company|default:""|safe  }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="10">검색 결과가 없습니다.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        <!-- 맨 처음으로 -->
+        {% if page_obj.has_previous %}
+            <a href="?q={{ query }}&director={{ director }}&genre={{ genre }}&year_start={{ year_start }}&year_end={{ year_end }}&movie_state={{ movie_state }}&movie_type={{ movie_type }}&nation={{ nation }}&index={{ index }}&page=1" class="nav-btn">≪</a>
+        {% endif %}
+        
+        <!-- 이전 페이지 -->
+        {% if page_obj.has_previous %}
+            <a href="?q={{ query }}&director={{ director }}&genre={{ genre }}&year_start={{ year_start }}&year_end={{ year_end }}&movie_state={{ movie_state }}&movie_type={{ movie_type }}&nation={{ nation }}&index={{ index }}&page={{ page_obj.previous_page_number }}" class="nav-btn">≺</a>
+        {% endif %}
+
+        <!-- 페이지 번호들을 JavaScript로 생성 -->
+        <div id="page-numbers"></div>
+
+        <!-- 다음 페이지 -->
+        {% if page_obj.has_next %}
+            <a href="?q={{ query }}&director={{ director }}&genre={{ genre }}&year_start={{ year_start }}&year_end={{ year_end }}&movie_state={{ movie_state }}&movie_type={{ movie_type }}&nation={{ nation }}&index={{ index }}&page={{ page_obj.next_page_number }}" class="nav-btn">≻</a>
+        {% endif %}
+
+        <!-- 맨 마지막으로 -->
+        {% if page_obj.has_next %}
+            <a href="?q={{ query }}&director={{ director }}&genre={{ genre }}&year_start={{ year_start }}&year_end={{ year_end }}&movie_state={{ movie_state }}&movie_type={{ movie_type }}&nation={{ nation }}&index={{ index }}&page={{ page_obj.paginator.num_pages }}" class="nav-btn">≫</a>
+        {% endif %}
+    </div>
+
+    <!-- DB 조회 시간 표시 -->
+    <div class="query-time">
+        DB 조회 시간: {{ query_time }}ms
+    </div>
+
+    <!-- 제작상태 선택 팝업 -->
+    <div id="statePopup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                코드검색 결과
+                <span class="popup-close" onclick="closeStatePopup()">&times;</span>
+            </div>
+            <div class="popup-body">
+                <div class="select-all-section">
+                    <div class="left-side">
+                        <input type="checkbox" id="selectAllStates">
+                        <label for="selectAllStates">전체 선택</label>
+                    </div>
+                    <button type="button" class="confirm-btn" onclick="applyStateSelection()">확인</button>
+                </div>
+                <table class="popup-table">
+                    <thead>
+                        <tr>
+                            <th>선택</th>
+                            <th>제작상태</th>
+                            <th>선택</th>
+                            <th>제작상태</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for state in available_states %}
+                            {% if forloop.counter0|divisibleby:2 %}
+                                <tr>
+                            {% endif %}
+                            <td style="text-align: center;">
+                                <input type="checkbox" value="{{ state }}" id="state_{{ state }}">
+                            </td>
+                            <td>
+                                <label for="state_{{ state }}">{{ state }}</label>
+                            </td>
+                            {% if forloop.counter|divisibleby:2 or forloop.last %}
+                                {% if forloop.last and not forloop.counter|divisibleby:2 %}
+                                    <td></td>
+                                    <td></td>
+                                {% endif %}
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div style="float: right; margin-top: 10px;">
+                    <button type="button" class="confirm-btn" onclick="applyStateSelection()">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 유형 선택 팝업 -->
+    <div id="typePopup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                코드검색 결과
+                <span class="popup-close" onclick="closeTypePopup()">&times;</span>
+            </div>
+            <div class="popup-body">
+                <div class="select-all-section">
+                    <div class="left-side">
+                        <input type="checkbox" id="selectAllTypes">
+                        <label for="selectAllTypes">전체 선택</label>
+                    </div>
+                    <button type="button" class="confirm-btn" onclick="applyTypeSelection()">확인</button>
+                </div>
+                <table class="popup-table">
+                    <thead>
+                        <tr>
+                            <th>선택</th>
+                            <th>유형</th>
+                            <th>선택</th>
+                            <th>유형</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for type in available_types %}
+                            {% if forloop.counter0|divisibleby:2 %}
+                                <tr>
+                            {% endif %}
+                            <td style="text-align: center;">
+                                <input type="checkbox" value="{{ type }}" id="type_{{ type }}">
+                            </td>
+                            <td>
+                                <label for="type_{{ type }}">{{ type }}</label>
+                            </td>
+                            {% if forloop.counter|divisibleby:2 or forloop.last %}
+                                {% if forloop.last and not forloop.counter|divisibleby:2 %}
+                                    <td></td>
+                                    <td></td>
+                                {% endif %}
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div style="float: right; margin-top: 10px;">
+                    <button type="button" class="confirm-btn" onclick="applyTypeSelection()">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 장르 선택 팝업 -->
+    <div id="genrePopup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                코드검색 결과
+                <span class="popup-close" onclick="closeGenrePopup()">&times;</span>
+            </div>
+            <div class="popup-body">
+                <div class="select-all-section">
+                    <div class="left-side">
+                        <input type="checkbox" id="selectAllGenres">
+                        <label for="selectAllGenres">전체 선택</label>
+                    </div>
+                    <button type="button" class="confirm-btn" onclick="applyGenreSelection()">확인</button>
+                </div>
+                <table class="popup-table">
+                    <thead>
+                        <tr>
+                            <th>선택</th>
+                            <th>장르</th>
+                            <th>선택</th>
+                            <th>장르</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for genre_item in available_genres %}
+                            {% if forloop.counter0|divisibleby:2 %}
+                                <tr>
+                            {% endif %}
+                            <td style="text-align: center;">
+                                <input type="checkbox" value="{{ genre_item }}" id="genre_{{ genre_item }}">
+                            </td>
+                            <td>
+                                <label for="genre_{{ genre_item }}">{{ genre_item }}</label>
+                            </td>
+                            {% if forloop.counter|divisibleby:2 or forloop.last %}
+                                {% if forloop.last and not forloop.counter|divisibleby:2 %}
+                                    <td></td>
+                                    <td></td>
+                                {% endif %}
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div style="float: right; margin-top: 10px;">
+                    <button type="button" class="confirm-btn" onclick="applyGenreSelection()">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 국적 선택 팝업 -->
+    <div id="nationPopup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                코드검색 결과
+                <span class="popup-close" onclick="closeNationPopup()">&times;</span>
+            </div>
+            <div class="popup-body">
+                <div class="select-all-section">
+                    <div class="left-side">
+                        <input type="checkbox" id="selectAllNations">
+                        <label for="selectAllNations">전체 선택</label>
+                    </div>
+                    <button type="button" class="confirm-btn" onclick="applyNationSelection()">확인</button>
+                </div>
+                <table class="popup-table">
+                    <thead>
+                        <tr>
+                            <th>선택</th>
+                            <th>제작국가</th>
+                            <th>선택</th>
+                            <th>제작국가</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for nation_item in available_nations %}
+                            {% if forloop.counter0|divisibleby:2 %}
+                                <tr>
+                            {% endif %}
+                            <td style="text-align: center;">
+                                <input type="checkbox" value="{{ nation_item }}" id="nation_{{ nation_item }}">
+                            </td>
+                            <td>
+                                <label for="nation_{{ nation_item }}">{{ nation_item }}</label>
+                            </td>
+                            {% if forloop.counter|divisibleby:2 or forloop.last %}
+                                {% if forloop.last and not forloop.counter|divisibleby:2 %}
+                                    <td></td>
+                                    <td></td>
+                                {% endif %}
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div style="float: right; margin-top: 10px;">
+                    <button type="button" class="confirm-btn" onclick="applyNationSelection()">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // 달력 열기 함수
+    function openCalendar(type) {
+        if (type === 'start') {
+            document.getElementById('start_date_picker').showPicker();
+        } else {
+            document.getElementById('end_date_picker').showPicker();
+        }
+    }
+
+    // ESC 키로 팝업 닫기 기능
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            // 현재 열려있는 팝업 찾아서 닫기
+            const openPopups = document.querySelectorAll('.popup-overlay');
+            openPopups.forEach(popup => {
+                if (popup.style.display === 'block') {
+                    popup.style.display = 'none';
+                    // 체크박스 초기화
+                    popup.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                }
+            });
+        }
+    });
+
+    // 팝업 배경 클릭시 닫기 기능
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('popup-overlay')) {
+            event.target.style.display = 'none';
+            // 체크박스 초기화
+            event.target.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+    });
+
+    // 제작상태 팝업 함수들
+    function openStatePopup() {
+        const popup = document.getElementById('statePopup');
+        const input = document.getElementById('movie_state_input');
+        
+        // 입력 필드 위치 가져오기
+        const rect = input.getBoundingClientRect();
+        const popupContent = popup.querySelector('.popup-content');
+        
+        // 팝업 위치 설정 (입력 필드 바로 아래)
+        popupContent.style.left = rect.left + 'px';
+        popupContent.style.top = (rect.bottom + 5) + 'px';
+        popupContent.style.transform = 'none';
+        
+        popup.style.display = 'block';
+        
+        const selectedStates = input.value;
+        if (selectedStates) {
+            const states = selectedStates.split(',').map(t => t.trim());
+            states.forEach(state => {
+                const checkbox = document.getElementById('state_' + state);
+                if (checkbox) checkbox.checked = true;
+            });
+        }
+    }
+
+    function closeStatePopup() {
+        document.getElementById('statePopup').style.display = 'none';
+        document.querySelectorAll('#statePopup input[type="checkbox"]').forEach(cb => cb.checked = false);
+    }
+
+    function applyStateSelection() {
+        const checkedStates = [];
+        document.querySelectorAll('#statePopup input[type="checkbox"]:checked:not(#selectAllStates)').forEach(cb => {
+            checkedStates.push(cb.value);
+        });
+        document.getElementById('movie_state_input').value = checkedStates.join(', ');
+        document.getElementById('movie_state_input').removeAttribute('readonly');
+        closeStatePopup();
+    }
+
+    // 유형 팝업 함수들
+    function openTypePopup() {
+        const popup = document.getElementById('typePopup');
+        const input = document.getElementById('movie_type_input');
+        
+        // 입력 필드 위치 가져오기
+        const rect = input.getBoundingClientRect();
+        const popupContent = popup.querySelector('.popup-content');
+        
+        // 팝업 위치 설정 (입력 필드 바로 아래)
+        popupContent.style.left = rect.left + 'px';
+        popupContent.style.top = (rect.bottom + 5) + 'px';
+        popupContent.style.transform = 'none';
+        
+        popup.style.display = 'block';
+        
+        const selectedTypes = input.value;
+        if (selectedTypes) {
+            const types = selectedTypes.split(',').map(t => t.trim());
+            types.forEach(type => {
+                const checkbox = document.getElementById('type_' + type);
+                if (checkbox) checkbox.checked = true;
+            });
+        }
+    }
+
+    function closeTypePopup() {
+        document.getElementById('typePopup').style.display = 'none';
+        document.querySelectorAll('#typePopup input[type="checkbox"]').forEach(cb => cb.checked = false);
+    }
+
+    function applyTypeSelection() {
+        const checkedTypes = [];
+        document.querySelectorAll('#typePopup input[type="checkbox"]:checked:not(#selectAllTypes)').forEach(cb => {
+            checkedTypes.push(cb.value);
+        });
+        document.getElementById('movie_type_input').value = checkedTypes.join(', ');
+        document.getElementById('movie_type_input').removeAttribute('readonly');
+        closeTypePopup();
+    }
+
+    // 장르 팝업 함수들
+    function openGenrePopup() {
+        const popup = document.getElementById('genrePopup');
+        const input = document.getElementById('genre_input');
+        
+        // 입력 필드 위치 가져오기
+        const rect = input.getBoundingClientRect();
+        const popupContent = popup.querySelector('.popup-content');
+        
+        // 팝업 위치 설정 (입력 필드 바로 아래)
+        popupContent.style.left = rect.left + 'px';
+        popupContent.style.top = (rect.bottom + 5) + 'px';
+        popupContent.style.transform = 'none';
+        
+        popup.style.display = 'block';
+        
+        const selectedGenres = input.value;
+        if (selectedGenres) {
+            const genres = selectedGenres.split(',').map(t => t.trim());
+            genres.forEach(genre => {
+                const checkbox = document.getElementById('genre_' + genre);
+                if (checkbox) checkbox.checked = true;
+            });
+        }
+    }
+
+    function closeGenrePopup() {
+        document.getElementById('genrePopup').style.display = 'none';
+        document.querySelectorAll('#genrePopup input[type="checkbox"]').forEach(cb => cb.checked = false);
+    }
+
+    function applyGenreSelection() {
+        const checkedGenres = [];
+        document.querySelectorAll('#genrePopup input[type="checkbox"]:checked:not(#selectAllGenres)').forEach(cb => {
+            checkedGenres.push(cb.value);
+        });
+        document.getElementById('genre_input').value = checkedGenres.join(', ');
+        document.getElementById('genre_input').removeAttribute('readonly');
+        closeGenrePopup();
+    }
+
+    // 국적 팝업 함수들
+    function openNationPopup() {
+        const popup = document.getElementById('nationPopup');
+        const input = document.getElementById('nation_input');
+        
+        // 입력 필드 위치 가져오기
+        const rect = input.getBoundingClientRect();
+        const popupContent = popup.querySelector('.popup-content');
+        
+        // 팝업 위치 설정 (입력 필드 바로 아래)
+        popupContent.style.left = rect.left + 'px';
+        popupContent.style.top = (rect.bottom + 5) + 'px';
+        popupContent.style.transform = 'none';
+        
+        popup.style.display = 'block';
+        
+        const selectedNations = input.value;
+        if (selectedNations) {
+            const nations = selectedNations.split(',').map(t => t.trim());
+            nations.forEach(nation => {
+                const checkbox = document.getElementById('nation_' + nation);
+                if (checkbox) checkbox.checked = true;
+            });
+        }
+    }
+
+    function closeNationPopup() {
+        document.getElementById('nationPopup').style.display = 'none';
+        document.querySelectorAll('#nationPopup input[type="checkbox"]').forEach(cb => cb.checked = false);
+    }
+
+    function applyNationSelection() {
+        const checkedNations = [];
+        document.querySelectorAll('#nationPopup input[type="checkbox"]:checked:not(#selectAllNations)').forEach(cb => {
+            checkedNations.push(cb.value);
+        });
+        document.getElementById('nation_input').value = checkedNations.join(', ');
+        document.getElementById('nation_input').removeAttribute('readonly');
+        closeNationPopup();
+    }
+
+    // 전체 선택 기능들
+    document.addEventListener('DOMContentLoaded', function() {
+        // 제작상태 전체 선택
+        const selectAllStates = document.getElementById('selectAllStates');
+        if (selectAllStates) {
+            selectAllStates.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('#statePopup input[type="checkbox"]:not(#selectAllStates)');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+            });
+        }
+
+        // 유형 전체 선택
+        const selectAllTypes = document.getElementById('selectAllTypes');
+        if (selectAllTypes) {
+            selectAllTypes.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('#typePopup input[type="checkbox"]:not(#selectAllTypes)');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+            });
+        }
+
+        // 장르 전체 선택
+        const selectAllGenres = document.getElementById('selectAllGenres');
+        if (selectAllGenres) {
+            selectAllGenres.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('#genrePopup input[type="checkbox"]:not(#selectAllGenres)');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+            });
+        }
+
+        // 국적 전체 선택
+        const selectAllNations = document.getElementById('selectAllNations');
+        if (selectAllNations) {
+            selectAllNations.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('#nationPopup input[type="checkbox"]:not(#selectAllNations)');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+            });
+        }
+    });
+
+    // 페이지네이션 생성 함수
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentPage = {{ page_obj.number }};
+        const totalPages = {{ page_obj.paginator.num_pages }};
+        const pageNumbersDiv = document.getElementById('page-numbers');
+        
+        // 현재 페이지가 속한 10개 그룹의 시작/끝 페이지 계산
+        const currentGroup = Math.floor((currentPage - 1) / 10);
+        const startPage = currentGroup * 10 + 1;
+        const endPage = Math.min(startPage + 9, totalPages);
+        
+        // 페이지 번호들 생성
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                const currentSpan = document.createElement('span');
+                currentSpan.className = 'current';
+                currentSpan.textContent = i;
+                pageNumbersDiv.appendChild(currentSpan);
+            } else {
+                const pageLink = document.createElement('a');
+                pageLink.href = `?q={{ query }}&director={{ director }}&genre={{ genre }}&year_start={{ year_start }}&year_end={{ year_end }}&movie_state={{ movie_state }}&movie_type={{ movie_type }}&nation={{ nation }}&index={{ index }}&page=${i}`;
+                pageLink.textContent = i;
+                pageNumbersDiv.appendChild(pageLink);
+            }
+        }
+    });
+    </script>
+</body>
+</html>
