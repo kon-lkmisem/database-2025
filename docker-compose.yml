@@ -5,6 +5,8 @@ services:
     build: .  # image 대신 build로 변경
     ports:
       - "8000:8000"
+    expose:
+      - "8000"  
     environment:
       - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}

@@ -1,13 +1,23 @@
 import time
 from django.shortcuts import render
 from django.core.paginator import Paginator
+from django.db.models import Q
+from django.db import connection
+from django.conf import settings
 from .models import Movie, Genre, MovieNation
 
 def movie_search(request):
-    start_time = time.time()  # 시작 시간 측정
+    start_time = time.time()
+    
+    # DEBUG 모드에서만 쿼리 추적
+    if settings.DEBUG:
+        initial_queries = len(connection.queries)
+    else:
+        initial_queries = 0
     
     movies = Movie.objects.all()
     q = request.GET.get('q', '')
+    use_match = request.GET.get('use_match', 'true').lower()  # 기본값은 True로 설정
     director = request.GET.get('director', '')
     genre = request.GET.get('genre', '')
     year_start = request.GET.get('year_start', '')
@@ -29,11 +39,18 @@ def movie_search(request):
     
     # 필터링 로직
     if q:
-        from django.db.models import Q
-        movies = movies.filter(
-            Q(movie_name__icontains=q) | 
-            Q(movie_engname__icontains=q)
-        )
+        if use_match == 'true': # Match 사용
+            movies = movies.extra(
+                where=["MATCH(movie_name) AGAINST(%s IN NATURAL LANGUAGE MODE)"],
+                params=[q]
+            )
+        else: # like 사용
+            movies = movies.filter(
+                Q(movie_name__icontains=q) | 
+                Q(movie_engname__icontains=q)
+                )
+        
+
     if director:
         movies = movies.filter(castings__director__dname__icontains=director)
     if genre:
@@ -53,14 +70,12 @@ def movie_search(request):
         nation_list = [n.strip() for n in nation.split(',') if n.strip()]
         movies = movies.filter(nations__nation__in=nation_list)
     
-    # 영화명 인덱싱 - 수정된 부분
+    # 영화명 인덱싱
     if index:
-        from django.db.models import Q
         if index in "ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ":
             start, end = get_chosung_range(index)
             movies = movies.filter(movie_name__gte=start, movie_name__lt=end)
         elif index in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
-            # 영어 인덱싱 - 영화명만 검색
             movies = movies.filter(movie_name__istartswith=index)
 
     movies = movies.distinct()
@@ -76,10 +91,35 @@ def movie_search(request):
         if movie.movie_state is None or movie.movie_state == 'None':
             movie.movie_state = ''
     
+    # 페이지 객체를 실제로 평가하여 쿼리 실행
     list(page_obj)
     
     end_time = time.time()
     query_time = round((end_time - start_time) * 1000, 2)
+    
+    # 쿼리 정보 수집 (DEBUG 모드에서만)
+    query_info = []
+    total_db_time = 0
+    query_count = 0
+    
+    if settings.DEBUG and hasattr(connection, 'queries'):
+        try:
+            executed_queries = connection.queries[initial_queries:]
+            query_count = len(executed_queries)
+            
+            for i, query in enumerate(executed_queries, 1):
+                query_time_ms = float(query.get('time', 0)) * 1000
+                total_db_time += query_time_ms
+                query_info.append({
+                    'number': i,
+                    'sql': query.get('sql', 'N/A'),
+                    'time': round(query_time_ms, 2)
+                })
+        except Exception as e:
+            # 에러가 발생하면 기본값 사용
+            query_info = [{'number': 1, 'sql': f'쿼리 수집 중 오류: {str(e)}', 'time': 0}]
+            total_db_time = 0
+            query_count = 0
 
     context = {
         'results': page_obj,
@@ -99,25 +139,33 @@ def movie_search(request):
         'available_genres': available_genres,
         'available_nations': available_nations,
         'query_time': query_time,
+        'query_info': query_info,
+        'query_count': query_count,
+        'total_db_time': round(total_db_time, 2),
     }
     return render(request, 'movies/movie_search.html', context)
 
 def get_chosung_range(chosung):
-    # 초성별 범위 매핑
-    chosung_ranges = {
-        'ㄱ': ('가', '나'),
-        'ㄴ': ('나', '다'),
-        'ㄷ': ('다', '라'),
-        'ㄹ': ('라', '마'),
-        'ㅁ': ('마', '바'),
-        'ㅂ': ('바', '사'),
-        'ㅅ': ('사', '아'),
-        'ㅇ': ('아', '자'),
-        'ㅈ': ('자', '차'),
-        'ㅊ': ('차', '카'),
-        'ㅋ': ('카', '타'),
-        'ㅌ': ('타', '파'),
-        'ㅍ': ('파', '하'),
-        'ㅎ': ('하', '힣'),
-    }
-    return chosung_ranges.get(chosung, ('', ''))
+    """
+    초성에 해당하는 정확한 유니코드 범위를 계산하여 반환
+    """
+    # 초성 리스트 (ㄱ~ㅎ)
+    chosung_list = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
+    
+    if chosung not in chosung_list:
+        return ('', '')
+    
+    # 초성의 인덱스
+    chosung_index = chosung_list.index(chosung)
+    
+    # 한글 유니코드 시작점 (가 = 0xAC00)
+    hangul_start = 0xAC00
+    
+    # 각 초성마다 588개의 글자 (중성 21개 × 종성 28개)
+    chars_per_chosung = 588
+    
+    # 해당 초성의 시작과 끝
+    start_code = hangul_start + (chosung_index * chars_per_chosung)
+    end_code = start_code + chars_per_chosung
+    
+    return (chr(start_code), chr(end_code))

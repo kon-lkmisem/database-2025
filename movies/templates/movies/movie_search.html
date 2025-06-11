@@ -210,7 +210,7 @@
         cursor: pointer;
     }
     /* 조회 시간 표시 스타일 */
-    .query-time { 
+    .query-info { 
         position: fixed; 
         bottom: 20px; 
         right: 20px; 
@@ -618,10 +618,38 @@
     </div>
 
     <!-- DB 조회 시간 표시 -->
-    <div class="query-time">
-        DB 조회 시간: {{ query_time }}ms
+    <!-- <div class="query-info">
+        <h4>DB 조회 정보</h4>
+        <p>총 실행 시간: {{ total_execution_time }}ms</p>
+        <p>쿼리 개수: {{ query_count }}개</p>
+        
+        {% for query in query_info %}
+            <div class="query-detail">
+                <strong>쿼리 {{ forloop.counter }}:</strong> {{ query.time }}ms<br>
+                <code>{{ query.sql }}</code>
+            </div>
+            <hr>
+        {% endfor %}
+    </div> -->
+    <div class="query-info">
+        <p><strong>DB 조회 시간:</strong> {{ total_db_time }}ms (총 {{ query_count }}개 쿼리)</p>
+        <p><strong>총 처리 시간:</strong> {{ query_time }}ms</p>
+        <p><small>DEBUG 모드: {% if debug %}ON{% else %}OFF{% endif %}</small></p>
+        
+        {% if query_info %}
+            <details>
+                <summary>SQL 쿼리 상세 정보 ({{ query_count }}개)</summary>
+                {% for query in query_info %}
+                    <div class="query-detail" style="margin: 10px 0; padding: 10px; border: 1px solid #ddd;">
+                        <strong>쿼리 {{ query.number }}:</strong> {{ query.time }}ms<br>
+                        <code style="background: #f5f5f5; padding: 5px; display: block; white-space: pre-wrap; font-size: 11px;">{{ query.sql }}</code>
+                    </div>
+                {% endfor %}
+            </details>
+        {% else %}
+            <p><small>쿼리 정보를 가져올 수 없습니다.</small></p>
+        {% endif %}
     </div>
-
     <!-- 제작상태 선택 팝업 -->
     <div id="statePopup" class="popup-overlay">
         <div class="popup-content">
