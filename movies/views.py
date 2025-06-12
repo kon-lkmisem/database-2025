@@ -41,9 +41,14 @@ def movie_search(request):
     if q:
         if use_match == 'true': # Match 사용
             movies = movies.extra(
-                where=["MATCH(movie_name) AGAINST(%s IN NATURAL LANGUAGE MODE)"],
-                params=[q]
-            )
+                    select={
+                        'search_rank': "MATCH(movie_name) AGAINST(%s IN BOOLEAN MODE) + MATCH(movie_engname) AGAINST(%s IN BOOLEAN MODE)"
+                    },
+                    select_params=[f'*{q}*', f'*{q}*'],
+                    where=["(MATCH(movie_name) AGAINST(%s IN BOOLEAN MODE) OR MATCH(movie_engname) AGAINST(%s IN BOOLEAN MODE))"],
+                    params=[f'*{q}*', f'*{q}*'],
+                    order_by=['-search_rank']
+                )
         else: # like 사용
             movies = movies.filter(
                 Q(movie_name__icontains=q) | 
