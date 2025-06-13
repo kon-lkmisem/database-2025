@@ -147,6 +147,7 @@ def movie_search(request):
         'query_info': query_info,
         'query_count': query_count,
         'total_db_time': round(total_db_time, 2),
+        'debug': settings.DEBUG,
     }
     return render(request, 'movies/movie_search.html', context)
 
