@@ -7,7 +7,6 @@ class Movie(models.Model):
     create_year = models.IntegerField()
     movie_type = models.CharField(max_length=10)
     movie_state = models.CharField(max_length=10)
-    
 
     class Meta:
         managed = False

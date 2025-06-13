@@ -54,7 +54,7 @@ def movie_search(request):
                 Q(movie_name__icontains=q) | 
                 Q(movie_engname__icontains=q)
                 )
-        
+
 
     if director:
         movies = movies.filter(castings__director__dname__icontains=director)
@@ -153,15 +153,47 @@ def movie_search(request):
 def get_chosung_range(chosung):
     """
     초성에 해당하는 정확한 유니코드 범위를 계산하여 반환
+    쌍자음도 포함하여 처리
     """
-    # 초성 리스트 (ㄱ~ㅎ)
-    chosung_list = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
+    # 기본 초성과 쌍자음 매핑
+    chosung_mapping = {
+        'ㄱ': ['ㄱ', 'ㄲ'],
+        'ㄴ': ['ㄴ'],
+        'ㄷ': ['ㄷ', 'ㄸ'],
+        'ㄹ': ['ㄹ'],
+        'ㅁ': ['ㅁ'],
+        'ㅂ': ['ㅂ', 'ㅃ'],
+        'ㅅ': ['ㅅ', 'ㅆ'],
+        'ㅇ': ['ㅇ'],
+        'ㅈ': ['ㅈ', 'ㅉ'],
+        'ㅊ': ['ㅊ'],
+        'ㅋ': ['ㅋ'],
+        'ㅌ': ['ㅌ'],
+        'ㅍ': ['ㅍ'],
+        'ㅎ': ['ㅎ'],
+    }
     
-    if chosung not in chosung_list:
+    # 전체 초성 리스트 (쌍자음 포함)
+    all_chosung_list = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
+    
+    if chosung not in chosung_mapping:
         return ('', '')
     
-    # 초성의 인덱스
-    chosung_index = chosung_list.index(chosung)
+    # 해당 초성과 관련된 모든 초성들의 범위를 구함
+    target_chosungs = chosung_mapping[chosung]
+    
+    # 각 초성에 대한 인덱스를 구해서 최소/최대 범위 계산
+    min_index = float('inf')
+    max_index = -1
+    
+    for target_chosung in target_chosungs:
+        if target_chosung in all_chosung_list:
+            chosung_index = all_chosung_list.index(target_chosung)
+            min_index = min(min_index, chosung_index)
+            max_index = max(max_index, chosung_index)
+    
+    if min_index == float('inf'):
+        return ('', '')
     
     # 한글 유니코드 시작점 (가 = 0xAC00)
     hangul_start = 0xAC00
@@ -169,8 +201,8 @@ def get_chosung_range(chosung):
     # 각 초성마다 588개의 글자 (중성 21개 × 종성 28개)
     chars_per_chosung = 588
     
-    # 해당 초성의 시작과 끝
-    start_code = hangul_start + (chosung_index * chars_per_chosung)
-    end_code = start_code + chars_per_chosung
+    # 최소 범위의 시작과 최대 범위의 끝
+    start_code = hangul_start + (min_index * chars_per_chosung)
+    end_code = hangul_start + ((max_index + 1) * chars_per_chosung)
     
     return (chr(start_code), chr(end_code))
